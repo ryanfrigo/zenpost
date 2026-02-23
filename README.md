@@ -67,6 +67,18 @@ zenpost unblock x --for 10m
 
 No API keys. No developer accounts. No feed exposure. Just post and go.
 
+## Companion: Browser Feed Hiding
+
+If you want to use social media sites in the browser but just hide the feed, use **[News Feed Eradicator](https://chromewebstore.google.com/detail/news-feed-eradicator/fjcldmjmjhkklehbacihaiopjklihlgg)** (Chrome/Firefox, 400K+ users). It removes feeds on X, LinkedIn, Facebook, YouTube, Reddit and replaces them with quotes.
+
+zenpost is the **nuclear option** — for when you don't trust yourself to not disable an extension. You can't cheat `/etc/hosts` as easily as toggling a browser extension.
+
+| Approach | Blocks Feed | Can Post | Can Browse Site | Cheat-proof |
+|----------|-------------|----------|-----------------|-------------|
+| zenpost (hosts) | ✅ | ✅ (CLI) | ❌ | 🔒 High |
+| Feed Eradicator (extension) | ✅ | ✅ (browser) | ✅ | ⚠️ Low |
+| Both together | ✅ | ✅ | ❌ | 🔒 Max |
+
 ## Philosophy
 
 Social media is a megaphone, not a TV. Use it to broadcast, not consume.
