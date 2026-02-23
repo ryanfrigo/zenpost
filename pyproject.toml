@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "zenpost"
+version = "0.1.0"
+description = "Post to social media without seeing the feed"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.9"
+authors = [{ name = "Ryan Frigo", email = "rfrigo42@gmail.com" }]
+keywords = ["social-media", "cli", "focus", "productivity", "digital-minimalism"]
+dependencies = [
+    "click>=8.0",
+    "tweepy>=4.14",
+    "requests>=2.28",
+    "requests-oauthlib>=1.3",
+    "rich>=13.0",
+]
+
+[project.scripts]
+zenpost = "zenpost.cli:cli"
+
+[project.urls]
+Homepage = "https://github.com/ryanfrigo/zenpost"
+Repository = "https://github.com/ryanfrigo/zenpost"
