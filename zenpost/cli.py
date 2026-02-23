@@ -184,31 +184,14 @@ def login(platform):
     """Log into a platform in the browser. Session is saved for future posts.
     
     Only needed once per platform. After login, `zenpost post` works without
-    any API keys.
+    any API keys. Automatically handles unblocking/reblocking.
     
     Examples:
         zenpost login x
         zenpost login linkedin
     """
     from .platforms.browser_post import login as browser_login
-    
-    platform = platform.lower()
-    
-    # Temporarily unblock for login
-    from .blocker import unblock, block
-    config = load_config()
-    was_blocked = platform in config.get("blocked", [])
-    
-    if was_blocked:
-        console.print(f"[dim]Temporarily unblocking {platform} for login...[/dim]")
-        unblock([platform])
-    
-    try:
-        browser_login(platform)
-    finally:
-        if was_blocked:
-            block([platform])
-            console.print(f"[dim]Re-blocked {platform}[/dim]")
+    browser_login(platform.lower())
 
 
 # ── auth ─────────────────────────────────────────────────────────

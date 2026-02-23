@@ -9,6 +9,59 @@ import sys
 from pathlib import Path
 
 PROFILE_DIR = Path.home() / ".zenpost" / "browser-profile"
+_was_blocked = False
+
+
+def _is_blocked(platform: str) -> bool:
+    """Check if platform is currently blocked in /etc/hosts."""
+    try:
+        from ..config import PLATFORM_DOMAINS
+        hosts = Path("/etc/hosts").read_text()
+        domains = PLATFORM_DOMAINS.get(platform, [])
+        return any(d in hosts for d in domains)
+    except Exception:
+        return False
+
+
+def _temp_unblock(platform: str):
+    """Temporarily unblock a platform for browser access."""
+    global _was_blocked
+    _was_blocked = _is_blocked(platform)
+    if _was_blocked:
+        import subprocess
+        from ..config import PLATFORM_DOMAINS
+        hosts = Path("/etc/hosts").read_text()
+        domains = PLATFORM_DOMAINS.get(platform, [])
+        lines = hosts.split("\n")
+        new_lines = [l for l in lines if not any(d in l for d in domains)]
+        tmp = Path("/tmp/zenpost_hosts_tmp")
+        tmp.write_text("\n".join(new_lines))
+        subprocess.run(["sudo", "cp", str(tmp), "/etc/hosts"], check=True)
+        subprocess.run(["sudo", "dscacheutil", "-flushcache"], check=False)
+        subprocess.run(["sudo", "killall", "-HUP", "mDNSResponder"], check=False)
+        tmp.unlink()
+        print(f"🔓 Temporarily unblocked {platform}")
+
+
+def _temp_reblock(platform: str):
+    """Re-block platform after browser access."""
+    global _was_blocked
+    if _was_blocked:
+        import subprocess
+        from ..config import PLATFORM_DOMAINS
+        hosts = Path("/etc/hosts").read_text()
+        domains = PLATFORM_DOMAINS.get(platform, [])
+        block_lines = "\n".join(f"127.0.0.1 {d}" for d in domains)
+        new_hosts = hosts.rstrip("\n") + "\n" + block_lines + "\n"
+        tmp = Path("/tmp/zenpost_hosts_tmp")
+        tmp.write_text(new_hosts)
+        subprocess.run(["sudo", "cp", str(tmp), "/etc/hosts"], check=True)
+        subprocess.run(["sudo", "dscacheutil", "-flushcache"], check=False)
+        subprocess.run(["sudo", "killall", "-HUP", "mDNSResponder"], check=False)
+        tmp.unlink()
+        print(f"🔒 Re-blocked {platform}")
+        _was_blocked = False
+
 
 # Direct compose/post URLs — skip the feed entirely
 COMPOSE_URLS = {
@@ -53,20 +106,26 @@ def login(platform: str):
     if platform not in login_urls:
         raise ValueError(f"Unsupported platform: {platform}")
     
-    _ensure_playwright()
-    pw, browser = _get_browser_context()
+    # Temporarily unblock if needed
+    _temp_unblock(platform)
     
-    page = browser.new_page()
-    page.goto(login_urls[platform])
-    
-    print(f"\n🔐 Log into {platform} in the browser window.")
-    print("   Your session will be saved for future posts.")
-    print("   Press Enter here when done...")
-    input()
-    
-    browser.close()
-    pw.stop()
-    print(f"✅ {platform} session saved!")
+    try:
+        _ensure_playwright()
+        pw, browser = _get_browser_context()
+        
+        page = browser.new_page()
+        page.goto(login_urls[platform])
+        
+        print(f"\n🔐 Log into {platform} in the browser window.")
+        print("   Your session will be saved for future posts.")
+        print("   Press Enter here when done...")
+        input()
+        
+        browser.close()
+        pw.stop()
+        print(f"✅ {platform} session saved!")
+    finally:
+        _temp_reblock(platform)
 
 
 def post(platform: str, text: str, image_path: str = None):
@@ -74,19 +133,24 @@ def post(platform: str, text: str, image_path: str = None):
     if platform not in COMPOSE_URLS:
         raise ValueError(f"Browser posting not supported for: {platform}")
     
-    _ensure_playwright()
-    pw, browser = _get_browser_context()
-    
-    page = browser.new_page()
+    _temp_unblock(platform)
     
     try:
-        if platform == "x":
-            return _post_x(page, text, image_path)
-        elif platform == "linkedin":
-            return _post_linkedin(page, text, image_path)
+        _ensure_playwright()
+        pw, browser = _get_browser_context()
+        
+        page = browser.new_page()
+        
+        try:
+            if platform == "x":
+                return _post_x(page, text, image_path)
+            elif platform == "linkedin":
+                return _post_linkedin(page, text, image_path)
+        finally:
+            browser.close()
+            pw.stop()
     finally:
-        browser.close()
-        pw.stop()
+        _temp_reblock(platform)
 
 
 def _post_x(page, text: str, image_path: str = None) -> dict:
