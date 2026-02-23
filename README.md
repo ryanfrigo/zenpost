@@ -23,13 +23,17 @@ pip install -e .
 ## Quick Start
 
 ```bash
-# Block social media (keeps API access working)
+# Block social media feeds
 sudo zenpost block x linkedin instagram youtube
 
-# Post to X (Twitter)
+# Log in once (saves your session — no API keys needed)
+zenpost login x
+zenpost login linkedin
+
+# Post to X (Twitter) — never see the feed
 zenpost post x "Just shipped zenpost — post without the feed."
 
-# Post to X with an image
+# Post with an image
 zenpost post x "Check this out" --image ./screenshot.png
 
 # Post to LinkedIn
@@ -54,23 +58,14 @@ zenpost unblock x --for 10m
 | Bluesky   | 🔜        | 🔜         | 🔜         | ✅         |
 | Threads   | 🔜        | 🔜         | 🔜         | ✅         |
 
-## Setup API Keys
-
-```bash
-# X/Twitter — get keys at https://developer.x.com
-zenpost auth x
-
-# LinkedIn — get keys at https://developer.linkedin.com
-zenpost auth linkedin
-```
-
-Keys are stored in `~/.zenpost/config.json`.
-
 ## How It Works
 
 1. **Blocking**: Adds entries to `/etc/hosts` to redirect social media domains to `127.0.0.1`. Your browser can't load the feed.
-2. **Posting**: Uses official platform APIs to publish content. APIs don't go through `/etc/hosts` — they resolve directly to API endpoints (`api.x.com`, `api.linkedin.com`).
-3. **You stay focused**: No feed. No algorithm. No doom-scrolling. Just your content going out.
+2. **Login once**: `zenpost login x` opens a browser — you log in, and your session is saved. No API keys, no developer accounts.
+3. **Posting**: Opens a headless browser, navigates directly to the compose page (skipping the feed), types your post, hits publish, and closes. You never see a timeline.
+4. **Auto-reblock**: If the platform was blocked, zenpost temporarily unblocks it for the post, then re-blocks immediately after.
+
+No API keys. No developer accounts. No feed exposure. Just post and go.
 
 ## Philosophy
 

@@ -124,34 +124,91 @@ def status():
 @click.argument("text")
 @click.option("--image", "-i", help="Path to image file")
 @click.option("--video", "-v", help="Path to video file")
-def post(platform, text, image, video):
+@click.option("--api", is_flag=True, help="Use API mode instead of browser (requires credentials)")
+def post(platform, text, image, video, api):
     """Post content to a platform.
+    
+    Uses browser automation by default (no API keys needed).
+    First time: run `zenpost login <platform>` to save your session.
     
     Examples:
         zenpost post x "Hello world!"
         zenpost post x "Check this out" --image photo.jpg
         zenpost post linkedin "Excited to share..."
+        zenpost post x "Tweet" --api  (use API instead of browser)
     """
     platform = platform.lower()
     
-    if platform == "x":
-        from .platforms.x import post as x_post
-        with console.status("Posting to X..."):
-            result = x_post(text, image_path=image, video_path=video)
-        console.print(f"\n[green]✅ Posted to X![/green]")
-        console.print(f"   {result['url']}")
-    
-    elif platform == "linkedin":
-        from .platforms.linkedin import post as li_post
-        with console.status("Posting to LinkedIn..."):
-            result = li_post(text, image_path=image)
-        console.print(f"\n[green]✅ Posted to LinkedIn![/green]")
-        console.print(f"   {result['url']}")
-    
+    if api:
+        # API mode — requires credentials
+        if platform == "x":
+            from .platforms.x import post as x_post
+            with console.status("Posting to X via API..."):
+                result = x_post(text, image_path=image, video_path=video)
+            console.print(f"\n[green]✅ Posted to X![/green]")
+            console.print(f"   {result['url']}")
+        elif platform == "linkedin":
+            from .platforms.linkedin import post as li_post
+            with console.status("Posting to LinkedIn via API..."):
+                result = li_post(text, image_path=image)
+            console.print(f"\n[green]✅ Posted to LinkedIn![/green]")
+            console.print(f"   {result['url']}")
+        else:
+            console.print(f"[red]API posting to {platform} not yet supported.[/red]")
     else:
-        console.print(f"[red]Posting to {platform} not yet supported.[/red]")
-        console.print(f"[dim]Supported: x, linkedin[/dim]")
-        return
+        # Browser mode — no API keys needed
+        from .platforms.browser_post import post as browser_post
+        
+        # Temporarily unblock the platform for posting
+        from .blocker import unblock, block
+        config = load_config()
+        was_blocked = platform in config.get("blocked", [])
+        
+        if was_blocked:
+            console.print(f"[dim]Temporarily unblocking {platform} for posting...[/dim]")
+            unblock([platform])
+        
+        try:
+            with console.status(f"Posting to {platform} via browser..."):
+                result = browser_post(platform, text, image_path=image)
+            console.print(f"\n[green]✅ Posted to {platform}![/green]")
+        finally:
+            if was_blocked:
+                block([platform])
+                console.print(f"[dim]Re-blocked {platform}[/dim]")
+
+
+@cli.command()
+@click.argument("platform")
+def login(platform):
+    """Log into a platform in the browser. Session is saved for future posts.
+    
+    Only needed once per platform. After login, `zenpost post` works without
+    any API keys.
+    
+    Examples:
+        zenpost login x
+        zenpost login linkedin
+    """
+    from .platforms.browser_post import login as browser_login
+    
+    platform = platform.lower()
+    
+    # Temporarily unblock for login
+    from .blocker import unblock, block
+    config = load_config()
+    was_blocked = platform in config.get("blocked", [])
+    
+    if was_blocked:
+        console.print(f"[dim]Temporarily unblocking {platform} for login...[/dim]")
+        unblock([platform])
+    
+    try:
+        browser_login(platform)
+    finally:
+        if was_blocked:
+            block([platform])
+            console.print(f"[dim]Re-blocked {platform}[/dim]")
 
 
 # ── auth ─────────────────────────────────────────────────────────
